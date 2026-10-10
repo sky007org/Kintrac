@@ -1,0 +1,8 @@
+{
+  "name": "KinTrac",
+  "description": "Real-time family safety tracking with live location, activity recognition, battery status, and SOS alerts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.email is string && data.email.size() <= 150 &&
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
+             data.role in ['protected', 'guardian'] &&
+             data.consentGiven is bool &&
+             data.familyCode is string && data.familyCode.size() >= 3 && data.familyCode.size() <= 32 &&
+             (!('emergencyContactName' in data) || data.emergencyContactName == null || (data.emergencyContactName is string && data.emergencyContactName.size() <= 100)) &&
+             (!('emergencyContactPhone' in data) || data.emergencyContactPhone == null || (data.emergencyContactPhone is string && data.emergencyContactPhone.size() <= 50)) &&
+             (!('appMode' in data) || data.appMode in ['family', 'corporate']) &&
+             (!('voiceLanguage' in data) || data.voiceLanguage in ['bengali', 'english']) &&
+             (!('officeCheckInTime' in data) || (data.officeCheckInTime is string && data.officeCheckInTime.size() <= 50)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidSafetyStatus(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.familyCode is string && data.familyCode.size() >= 3 && data.familyCode.size() <= 32 &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.sharingActive is bool &&
+             (data.latitude is number || data.latitude is int) &&
+             (data.longitude is number || data.longitude is int) &&
+             (!('accuracy' in data) || data.accuracy == null || data.accuracy is number || data.accuracy is int) &&
+             data.batteryLevel is int && data.batteryLevel >= 0 && data.batteryLevel <= 100 &&
+             (!('isCharging' in data) || data.isCharging is bool) &&
+             data.activityState in ['STILL', 'WALKING', 'RUNNING', 'IN_VEHICLE', 'UNKNOWN'] &&
+             (!('stepCount' in data) || data.stepCount is int) &&
+             data.lastUpdated is timestamp && data.lastUpdated <= request.time &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidSosAlert(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.familyCode is string && data.familyCode.size() >= 3 && data.familyCode.size() <= 32 &&
+             (data.latitude is number || data.latitude is int) &&
+             (data.longitude is number || data.longitude is int) &&
+             data.batteryLevel is int && data.batteryLevel >= 0 && data.batteryLevel <= 100 &&
+             data.status in ['ACTIVE', 'RESOLVED'] &&
+             data.message is string && data.message.size() <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('resolvedAt' in data) || data.resolvedAt == null || (data.resolvedAt is timestamp && data.resolvedAt <= request.time));
+    }
+
+    // 1. User Profiles
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || (resource.data.familyCode is string && resource.data.familyCode.size() > 0));
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       isValidUserProfile(incoming());
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming());
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 2. Safety Status (Live location, battery, activity)
+    match /safety_status/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.familyCode is string && resource.data.familyCode.size() > 0;
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       isValidSafetyStatus(incoming());
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       isValidSafetyStatus(incoming());
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 3. SOS Alerts
+    match /sos_alerts/{alertId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.familyCode is string && resource.data.familyCode.size() > 0;
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       isValidSosAlert(incoming());
+      allow update: if isSignedIn() &&
+                       isValidSosAlert(incoming()) &&
+                       (existing().userId == request.auth.uid || incoming().status == 'RESOLVED');
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}

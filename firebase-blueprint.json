@@ -1,0 +1,187 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile with role selection and consent records",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Unique Firebase Auth user ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "role": {
+          "type": "string",
+          "description": "Account role: protected or guardian",
+          "enum": ["protected", "guardian"]
+        },
+        "consentGiven": {
+          "type": "boolean",
+          "description": "Explicit consent given to share location and physical activity"
+        },
+        "familyCode": {
+          "type": "string",
+          "description": "Unique 6-character family circle pairing code"
+        },
+        "emergencyContactName": {
+          "type": "string",
+          "description": "Emergency contact person name"
+        },
+        "emergencyContactPhone": {
+          "type": "string",
+          "description": "Emergency contact phone number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Document creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Document update server timestamp"
+        }
+      },
+      "required": ["userId", "email", "role", "consentGiven", "familyCode", "createdAt"]
+    },
+    "SafetyStatus": {
+      "title": "SafetyStatus",
+      "description": "Real-time location, activity state, and battery telemetry of protected device",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User ID of the protected device"
+        },
+        "familyCode": {
+          "type": "string",
+          "description": "Family circle code"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of protected user"
+        },
+        "sharingActive": {
+          "type": "boolean",
+          "description": "Toggle status of active safety sharing"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Current device latitude coordinate"
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Current device longitude coordinate"
+        },
+        "accuracy": {
+          "type": "number",
+          "description": "Location accuracy in meters"
+        },
+        "batteryLevel": {
+          "type": "integer",
+          "description": "Battery percentage from 0 to 100"
+        },
+        "isCharging": {
+          "type": "boolean",
+          "description": "Whether device is currently charging"
+        },
+        "activityState": {
+          "type": "string",
+          "description": "Detected physical activity state",
+          "enum": ["STILL", "WALKING", "RUNNING", "IN_VEHICLE", "UNKNOWN"]
+        },
+        "stepCount": {
+          "type": "integer",
+          "description": "Daily estimated steps"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Initial record server timestamp"
+        }
+      },
+      "required": ["userId", "familyCode", "displayName", "sharingActive", "latitude", "longitude", "batteryLevel", "activityState", "lastUpdated", "createdAt"]
+    },
+    "SosAlert": {
+      "title": "SosAlert",
+      "description": "Emergency SOS alert triggered by a protected family member",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Alert document ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User ID of alerting family member"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Name of alerting member"
+        },
+        "familyCode": {
+          "type": "string",
+          "description": "Family circle code"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Emergency location latitude"
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Emergency location longitude"
+        },
+        "batteryLevel": {
+          "type": "integer",
+          "description": "Battery percentage when triggered"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of SOS alert",
+          "enum": ["ACTIVE", "RESOLVED"]
+        },
+        "message": {
+          "type": "string",
+          "description": "Emergency distress message"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Alert trigger server timestamp"
+        },
+        "resolvedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Alert resolved timestamp if any"
+        }
+      },
+      "required": ["id", "userId", "displayName", "familyCode", "latitude", "longitude", "batteryLevel", "status", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile with role, consent state, and family pairing code"
+    },
+    "/safety_status/{userId}": {
+      "schema": { "$ref": "#/entities/SafetyStatus" },
+      "description": "Real-time location, activity state, and battery status for protected member"
+    },
+    "/sos_alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/SosAlert" },
+      "description": "Active and past SOS alerts triggered by protected members"
+    }
+  }
+}
